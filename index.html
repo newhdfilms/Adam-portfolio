@@ -279,7 +279,6 @@
         /* Skills Section */
         .skills-grid {
             display: grid;
-            /* Updated to fit 5 columns */
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 2rem;
         }
@@ -356,11 +355,49 @@
         }
 
         @media (max-width: 768px) {
-            .carousel-container { grid-template-columns: 1fr; }
-            .nav-btn { display: none; }
+            /* REELS SECTION REMAINS UNTOUCHED (Grid Layout) */
+            #reels-carousel { grid-template-columns: 1fr; }
+
+            /* OTHER CAROUSELS: SWITCH TO SWIPE/SCROLL */
+            .carousel-container:not(#reels-carousel) {
+                display: flex; /* Horizontal flow */
+                overflow-x: auto; /* Enable Scroll */
+                scroll-snap-type: x mandatory; /* Snap to center */
+                gap: 1rem;
+                padding-bottom: 2rem; /* Space for scrollbar if visible/touch area */
+                grid-template-columns: none; /* Reset grid */
+                /* Hide scrollbar for cleaner look */
+                -ms-overflow-style: none;  /* IE and Edge */
+                scrollbar-width: none;  /* Firefox */
+            }
+            
+            .carousel-container:not(#reels-carousel)::-webkit-scrollbar {
+                display: none;
+            }
+
+            /* VIDEO CARD ADJUSTMENTS FOR SWIPE */
+            .carousel-container:not(#reels-carousel) .video-card {
+                flex: 0 0 85%; /* Card takes 85% width (Bleeds edges) */
+                width: 85%;
+                scroll-snap-align: center; /* Snap to center of screen */
+                display: block !important; /* Force show all items (JS override) */
+            }
+
+            /* ARROW NAVIGATION ON MOBILE */
+            .nav-btn { 
+                display: flex; /* Show arrows */
+                top: auto;
+                bottom: -50px; /* Position below container */
+                transform: none;
+            }
+            
+            /* Position arrows side by side below */
+            .nav-btn.prev { left: 35%; margin-left: -30px; }
+            .nav-btn.next { right: 35%; margin-right: -30px; }
+            
+            /* General text adjustments */
             .hero-content h1 { font-size: 4rem; }
             .contact-content { grid-template-columns: 1fr; }
-            #reels-carousel { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -721,8 +758,40 @@
             return 3;
         }
 
+        function checkMobile() {
+            return window.innerWidth <= 768;
+        }
+
+        // Initialize display to prevent hidden items on load in mobile
+        function initLayout() {
+            if (checkMobile()) {
+                // Force all carousel items to be visible so scroll works
+                document.querySelectorAll('.carousel-container:not(#reels-carousel) .video-card').forEach(card => {
+                    card.style.display = 'block';
+                });
+            } else {
+                // If desktop, apply pagination logic
+                Object.keys(states).forEach(id => navigate(id, 0));
+            }
+        }
+
         function navigate(id, dir) {
             const container = document.getElementById(`${id}-carousel`);
+            
+            // MOBILE: SCROLL LOGIC
+            if (checkMobile()) {
+                const cardWidth = container.querySelector('.video-card').offsetWidth;
+                const gap = 16; // 1rem gap
+                const scrollAmount = cardWidth + gap;
+                
+                container.scrollBy({
+                    left: dir * scrollAmount,
+                    behavior: 'smooth'
+                });
+                return; 
+            }
+
+            // DESKTOP: PAGINATION LOGIC
             const items = container.querySelectorAll('.video-card');
             const perPage = getItemsPerPage();
             const totalPages = Math.ceil(items.length / perPage);
@@ -757,11 +826,15 @@
 
         modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
 
-        // Init carousels
+        // Init carousels on resize and load
         window.addEventListener('resize', () => {
-            Object.keys(states).forEach(id => { states[id].page = 0; navigate(id, 0); });
+            // Reset page count on resize to avoid index errors
+            Object.keys(states).forEach(id => { states[id].page = 0; });
+            initLayout();
         });
-        Object.keys(states).forEach(id => navigate(id, 0));
+        
+        // Initial Load
+        initLayout();
     </script>
 </body>
 </html>
